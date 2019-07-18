@@ -55,7 +55,7 @@ using namespace mel;
 const int	 		kTimeBetweenCues(1000);// sets the number of milliseconds to wait in between cues
 const int	 		kConfirmValue(123);
 const bool	 		kTimestamp(false);
-const std::string	kDataPath("C:/Users/zaz2/Desktop/Absolute_Threshold_Tests"); //file path to Main project files
+const std::string	kDataPath("C:/Users/aa107/Desktop/Absolute_Threshold"); //file path to Main project files
 
 // variable to track protocol being run						
 bool		 staircase_flag(false);
@@ -606,16 +606,11 @@ void RunStaircaseUI(DaqNI &daq_ni,
 
 	// prompt user with options
 	print("Please select desired condition to test:");
-	print("0) Stretch with no interference and minimum distance between cues");
-	print("1) Stretch with no interference and medium distance between cues");
-	print("2) Stretch with no interference and maximum distance between cues");
-	print("3) Stretch with low squeeze interference and minimum distance between cues");
-	print("4) Stretch with low squeeze interference and medium distance between cues");
-	print("5) Stretch with low squeeze interference and maximum distance between cues");
-	print("6) Stretch with high squeeze interference and minimum distance between cues");
-	print("7) Stretch with high squeeze interference and medium distance between cues");
-	print("8) Stretch with high squeeze interference and maximum distance between cues");
-	print("9) To randomly go through all conditions");
+	print("0) Stretch with no interference");
+	print("1) Stretch with squeeze interference");
+	print("2) Squeeze with no interference");
+	print("3) Squeeze with stretch interference");
+	print("4) To randomly go through all conditions");
 	print("CTRL+C) To end staircase protocol");
 
 	// recieve user input
@@ -623,7 +618,7 @@ void RunStaircaseUI(DaqNI &daq_ni,
 	std::cin >> input_value;
 
 	// run specific condition based on user input
-	if(input_value >= 0 && input_value < 9)
+	if(input_value >= 0 && input_value < 4)
 	{
 		staircase.SetConditionNum(input_value);
 		print(staircase.GetConditionName());
@@ -637,7 +632,7 @@ void RunStaircaseUI(DaqNI &daq_ni,
 	}
 
 	// runs through all conditions with the staircase method
-	else if(input_value == 9)
+	else if(input_value == 4)
 	{
 		print(staircase.GetConditionName());
 		while(!stop)

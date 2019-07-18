@@ -31,10 +31,21 @@ TrialList::TrialList()
 			for (int k = 0; k < kNumberAngles_; k++) 
 			{
 				double next_angle;
-				if (condition_num >= 3 && condition_num < 6) next_angle = kStretchAnglesLowInterference_[k];	
-				else if (condition_num >= 6 && condition_num < 9) next_angle = kStretchAnglesHighInterference_[k];
-				else next_angle = kStretchAngles_[k];
-				
+				switch(condition_num)
+				{
+				case 0:
+					next_angle = kStretchAngles_[k];
+					break;
+				case 1:
+					next_angle = kStretchAnglesInterference_[k];
+					break;
+				case 2:
+					next_angle = kSqueezeAngles_[k];
+					break;
+				case 3:
+					next_angle = kSqueezeAnglesInterference_[k];
+					break;
+				}			
 				angles_[condition_num][j + k] = next_angle;
 			}
 		}
@@ -81,7 +92,12 @@ void TrialList::GetTestPositions(std::array<std::array<double,2>,2> &position_de
 
 	// generates test position std::array and test position std::array
 	double interference_angle = GetInterferenceAngle();
-	test_positions = { GetAngleNumber(condition, angle), interference_angle };
+	if(condition > 1)
+		// then the condition is manipulating stretch with squeeze interference
+		test_positions = { interference_angle, GetAngleNumber(condition, angle) };
+	else
+		// the condition is manipulating squeeze with stretch interference
+		test_positions = { GetAngleNumber(condition, angle), interference_angle };	
 	
 	// attach zero position for motors to return to after cue
 	position_desired[0] = test_positions;
@@ -165,8 +181,7 @@ Overloads interference call to get the interference angle if condition is provid
 */
 int TrialList::GetInterferenceAngle(int condition_num)
 {
-	if (condition_num >= 3 && condition_num < 6) return kInterferenceAngleLow_;	
-	else if (condition_num >= 6 && condition_num < 9) return kInterferenceAngleHigh_;
+	if (condition_num % 2) return kInterferenceAngle_;	
 	else return kZeroAngle_;		
 }
 
@@ -344,15 +359,10 @@ void TrialList::ExportList(std::string filepath, bool timestamp)
 	// create new data logger and prepare output trialList file
 	const std::vector<std::string> kHeaderNames = 
 	{ 
-		"0=Str_No_Min",
-		"1=Str_No_Mid",
-		"2=Str_No_Max",
-		"3=StrXSqu_Lo_Min",
-		"4=StrXSqu_Lo_Mid",
-		"5=StrXSqu_Lo_Max",
-		"6=StrXSqu_Hi_Min",
-		"7=StrXSqu_Hi_Mid",
-		"8=StrXSqu_Hi_Max"
+		"0=Str",
+		"1=Str_Squ",
+		"2=Squ",
+		"3=Squ_Str"
 	};
 	mel::csv_write_row(filepath, kHeaderNames);
 
@@ -362,12 +372,7 @@ void TrialList::ExportList(std::string filepath, bool timestamp)
 		(double)conditions_[0], 
 		(double)conditions_[1],
 		(double)conditions_[2],
-		(double)conditions_[3], 
-		(double)conditions_[4],
-		(double)conditions_[5],
-		(double)conditions_[6], 
-		(double)conditions_[7],
-		(double)conditions_[8]
+		(double)conditions_[3]
 	};	
 	mel::csv_append_row(filepath, output_row);
 
