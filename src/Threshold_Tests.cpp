@@ -52,7 +52,7 @@ using namespace mel;
 ******************* GLOBAL VARIABLES ***********************
 ************************************************************/
 // constant variables 
-const int	 		kTimeBetweenCues(1000);// sets the number of milliseconds to wait in between cues
+const int	 		kTimeBetweenCues(10);// sets the number of milliseconds to wait in between cues
 const int	 		kConfirmValue(123);
 const bool	 		kTimestamp(false);
 const std::string	kDataPath("C:/Users/aa107/Desktop/Absolute_Threshold"); //file path to Main project files
@@ -109,43 +109,61 @@ void MotorPositionGet(std::array<std::array<double,2>,2> &position_desired, Maxo
 {
 	// loops through each of the positions in the std::array for the trial
 	for (int i = 0; i < position_desired.size(); i++)
-	{
-		// update desired positions
+	{			
+		// defines the actual positions of the motors
+		double position_a, position_b;
+
+		// gets the initial actual positions of the motors
+		motor_a.GetPosition(position_a);
+		motor_b.GetPosition(position_b);
+
+		// update positions
 		{
 			Lock lock(mutex);
 			motor_desired_position[0] = position_desired[i][0];
 			motor_desired_position[1] = position_desired[i][1];
+			motor_position[0] = position_a;
+			motor_position[1] = position_b;
 		}
-
-		// move motors to desired positions
-		motor_a.Move((double) motor_desired_position[0]);
-		motor_b.Move((double) motor_desired_position[1]);
-
+		
 		// create 100Hz timer
 		Timer timer(hertz(100));
+
+		// move motors to desired positions
+		motor_a.Move( motor_desired_position[0]);
+		motor_b.Move( motor_desired_position[1]);
 
 		// measures the motor positions during any motor movement
 		while (!motor_a.TargetReached() || !motor_b.TargetReached()) {
 
-			// creates and defines the actual positions of the motors
-			long position_a, position_b;
+			// gets the actual positions of the motors
 			motor_a.GetPosition(position_a);
 			motor_b.GetPosition(position_b);
 			{
 				Lock lock(mutex);
-				motor_position[0] = (double)position_a;
-				motor_position[1] = (double)position_b;
+				motor_position[0] = position_a;
+				motor_position[1] = position_b;
 			}
 			timer.wait();
 		}
 
+		// gets final actual positions of the motors
+		motor_a.GetPosition(position_a);
+		motor_b.GetPosition(position_b);
+		{
+			Lock lock(mutex);
+			motor_position[0] = position_a;
+			motor_position[1] = position_b;
+		}
+		timer.wait();
+
 		//waits between cue 1 and cue 2
-		/*
+		
 		if (i == 1)
 		{
 			sleep(milliseconds(kTimeBetweenCues));
 		}
-		*/
+		
 	}
 	// tells the force sensor loop to exit once trial is complete
 	motor_flag = true;
@@ -169,8 +187,11 @@ void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired, 	
 	// create 1000Hz timer
 	Timer timer(hertz(1000)); 
 
+	// final loop flag
+	bool last_flag = true;
+
 	// movement data record loop
-	while (!motor_flag)
+	while (!motor_flag || last_flag)
 	{
 		// DAQmx Read Code
 		daq_ni.update();
@@ -204,6 +225,8 @@ void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired, 	
 		// increment sample number
 		sample++;
 		timer.wait();
+
+		if(motor_flag) last_flag = false;
 	}
 
 	// joins threads together and resets flag before continuing
@@ -417,23 +440,25 @@ void RecordExperimentABS(std::vector<std::vector<double>>* threshold_output)
 	// creates an integer for user input
 	int input_value = 0;
 
-	// asks user for input regarding their comparison
-	print("Iteration: " + std::to_string(trial_list.GetIterationNumber()));
-	print("Could you detect the cue? 1 for yes, 2 for no.....");
-	
-	std::vector<Key> input_keys = { Key::Num1, Key::Numpad1, Key::Num2, Key::Numpad2 };
-	Keyboard::wait_for_any_keys(input_keys);
-	
-	if (Keyboard::is_key_pressed(Key::Num1) || Keyboard::is_key_pressed(Key::Numpad1))
+	// states current iteration for the user
+	mel::print("Iteration: " + std::to_string(trial_list.GetIterationNumber()));
+
+	// continues recieving input if input was invalid
+	while(input_value != 1 && input_value != 2 && !stop)
 	{
-		input_value = 1;
-		print("You typed " + std::to_string(input_value));
+		// prompts user for their input
+		mel::print("Could you detect the cue? 1 for yes, 2 for no.....");
+	
+		// clears cin error if exists
+		std::cin.clear();
+		std::cin.sync();
+		
+		// recieves user input
+		std::cin >> input_value;
 	}
-	else if (Keyboard::is_key_pressed(Key::Num2) || Keyboard::is_key_pressed(Key::Numpad2))
-	{
-		input_value = 2;
-		print("You typed " + std::to_string(input_value));
-	}
+	
+	// tells user their selected input
+	mel::print("You typed " + std::to_string(input_value));
 
 	// add current row for ABS testing to the buffer
 	std::vector<double> output_row = { 
@@ -531,7 +556,7 @@ void RunExperimentUI(DaqNI &daq_ni,
 		trial_list.GetTestPositions(position_desired);
 
 		// prints current desired test position for debug purposes
-		print(position_desired[0]);
+		//print(position_desired[0]);
 		
 		// provides cue to user
 		RunMovementTrial(position_desired, daq_ni, ati_a, ati_b, motor_a, motor_b);
@@ -564,7 +589,7 @@ void RunExportUI(std::vector<std::vector<double>>* threshold_output)
 {
 	// defining the file name for the ABS data file
 	std::string filename = "/sub" + std::to_string(subject) + "_ABS_data.csv";
-	std::string filepath = kDataPath + "/data/ABS" + filename;
+	std::string filepath = kDataPath + "/ABS" + filename;
 
 	// builds header names for threshold logger
 	const std::vector<std::string> header_names = 
@@ -589,7 +614,7 @@ void RunExportUI(std::vector<std::vector<double>>* threshold_output)
 	// exporting the trialList for this subject
 	// defining the file name for the ABS data file
 	filename = "/sub" + std::to_string(subject) + "_trialList.csv";
-	filepath = kDataPath + "/data/trialList" + filename;
+	filepath = kDataPath + "/trialList" + filename;
 	trial_list.ExportList(filepath, kTimestamp);
 }
 

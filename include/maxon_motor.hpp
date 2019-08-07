@@ -24,10 +24,10 @@ with other controllers
 /***********************************************************
 ******************* GLOBAL VARIABLES ***********************
 ************************************************************/
-const long		 kGearRatio_(388125 / 4693); 
+const double	 kGearRatio_(388125 / 4693); 
 const int		 kEncoderCounts_(1024 * 4); // counts per rotation (using quadrature encoding)
 const int		 kDegreesToRotation_(360); // degress per rotation
-const long		 kDegreesToCount_(kEncoderCounts_ * kGearRatio_ / kDegreesToRotation_);
+const double	 kDegreesToCount_(kEncoderCounts_ * kGearRatio_ / kDegreesToRotation_);
 
 
 /***********************************************************
@@ -48,16 +48,16 @@ private:
 	unsigned int desired_deceleration_;
 
 	// data recorder variables
-	//WORD		 samplePeriod; 
-	//WORD		 samples;
+	// WORD		 sample_period; 
+	// WORD		 samples;
 
 	// device connection functions
 	void		 EnableControl();
 	void		 DisableControl();
 
 	// device parameter functions
-	void		 SetControlParam();
-	//void setRecorderParam();
+	// void		 SetControlParam();
+	// void 	 SetRecorderParam();
 
 	// movement functions
 	void		 Halt();
@@ -76,16 +76,17 @@ public:
 	void	SetControlParam(unsigned int desired_velocity, 
 							unsigned int desired_acceleration, 
 							unsigned int desired_deceleration);
-	//void setRecorderParam(unsigned int desSampleFreq, unsigned int desSamples);
+	// void 	SetRecorderParam(unsigned int desired_sample_frequency,
+	// 						unsigned int desired_samples);
 
 	// movement functions
 	void	Move(double desired_position);
-	void	GetPosition(long& position);
+	void	GetPosition(double& position);
 	BOOL	TargetReached();
 
 	// data recorder functions
-	/*void startRecord();
-	void stopRecord();
-	void outputData();*/
+	// void StartRecord();
+	// void StopRecord();
+	// void ReadData();
 };
 #endif MAXONMOTOR

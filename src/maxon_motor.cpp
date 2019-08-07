@@ -35,8 +35,8 @@ MaxonMotor::MaxonMotor()
 	error_code_ = 0;
 	key_handle_ = 0;
 
-	//samplePeriod =	1; //n-times 0.1ms, 1 is 1000Hz
-	//samples =		100;
+	// sample_period =	1; //n-times 0.1ms, 1 is 1000Hz
+	// samples =		100;
 
 	// initializing motor control parameters
 	desired_velocity_ = 10000;
@@ -100,56 +100,48 @@ void MaxonMotor::EnableControl()
 	}
 
 	// sets the controller's data recorder parameters
-	//setRecorderParam();
+	// SetRecorderParam();
 }
 
 /*
 Sets the position control parameters once the device
 has been enabled
  */
-void MaxonMotor::SetControlParam()
-{
-	// attempts to set the controllers' position control parameters
-	if (!VCS_SetPositionProfile(key_handle_, node_id_, desired_velocity_, desired_acceleration_, desired_deceleration_, &error_code_))
-	{
-		std::cout << "Position control parameter update failed!, error code = " << error_code_ << std::endl;
-	}
-	std::cout << "Position control parameters updated!" << std::endl;
-}
+// void MaxonMotor::SetControlParam()
+// {
+// 	// attempts to set the controllers' position control parameters
+// 	if (!VCS_SetPositionProfile(key_handle_, node_id_, desired_velocity_, desired_acceleration_, desired_deceleration_, &error_code_))
+// 	{
+// 		std::cout << "Position control parameter update failed!, error code = " << error_code_ << std::endl;
+// 	}
+// 	std::cout << "Position control parameters updated!" << std::endl;
+// }
 
 /*
 Sets the data recorder parameters once the device
 has been enabled
 */
-//void maxonMotor::setRecorderParam()
-//{
-//	// define relevant parameters for data recorder
-//	WORD demPosIndex = 0x6062; // addresses found from EPOS studio software
-//	WORD actPosIndex = 0x6064;
-//	BYTE posSubIndex = 0x00; 
-//	BYTE objectSize = 4; // positions values are in int32 format
-//	
-//	// attempts to set the recorder parameters
-//	if (!VCS_SetRecorderParameter(key_handle_, node_id_, samplePeriod, samples, &error_code_)) 
-//	{
-//		std::cout << "Data recorder parameter update failed!, error code = " << error_code_ << std::endl;
-//	}
-//	std::cout << "Recorder parameters updated!" << std::endl;
-//
-//	// activates demand position data recorder channel
-//	if (!VCS_ActivateChannel(key_handle_, node_id_, 1, demPosIndex, posSubIndex, objectSize, &error_code_))
-//	{
-//		std::cout << "Data recorder channel activation failed!, error code = " << error_code_ << std::endl;
-//	}
-//	std::cout << "Recorder channels activated!" << std::endl;
-//
-//	// activates actual position recorder channel
-//	if (!VCS_ActivateChannel(key_handle_, node_id_, 2, demPosIndex, posSubIndex, objectSize, &error_code_))
-//	{
-//		std::cout << "Data recorder channel activation failed!, error code = " << error_code_ << std::endl;
-//	}
-//	std::cout << "Recorder channels activated!" << std::endl;
-//}
+// void MaxonMotor::SetRecorderParam()
+// {
+// 	// define relevant parameters for data recorder. Addresses found from EPOS studio software
+// 	WORD actual_position_index = 0x6064;
+// 	BYTE position_subindex = 0x00; 
+// 	BYTE object_size = 8; // positions values are in double format
+	
+// 	// attempts to set the recorder parameters
+// 	if (!VCS_SetRecorderParameter(key_handle_, node_id_, sample_period, samples, &error_code_)) 
+// 	{
+// 		std::cout << "Data recorder parameter update failed!, error code = " << error_code_ << std::endl;
+// 	}
+// 	std::cout << "Recorder parameters updated!" << std::endl;
+
+// 	// activates actual position recorder channel
+// 	if (!VCS_ActivateChannel(key_handle_, node_id_, 1, actual_position_index, position_subindex, object_size, &error_code_))
+// 	{
+// 		std::cout << "Data recorder channel activation failed!, error code = " << error_code_ << std::endl;
+// 	}
+// 	std::cout << "Recorder channels activated!" << std::endl;
+// }
 
 /*
 Turns off the position control on the controller
@@ -265,18 +257,19 @@ void MaxonMotor::SetControlParam(
 	desired_deceleration_ =	desired_deceleration;
 	
 	// sets the controller's control parameters
-	SetControlParam();
+	// SetControlParam();
 }
 
 /*
 Sets the sampling freqeuncy and number of samples or the data recorder
 */
-//void maxonMotor::setRecorderParam(unsigned int desSampleFreq, unsigned int desSamples)
-//{
-//	int HZ_TO_MS = 1/1000;
-//	samplePeriod = desSampleFreq * HZ_TO_MS;
-//	samples = desSamples;
-//}
+// void MaxonMotor::SetRecorderParam(	unsigned int desired_sample_frequency,
+// 									unsigned int desired_samples)
+// {
+// 	int HZ_TO_MS = 1/1000;
+// 	sample_period = desired_sample_frequency * HZ_TO_MS;
+// 	samples = desired_samples;
+// }
 
 
 /***********************************************************
@@ -305,16 +298,17 @@ void MaxonMotor::Move(double desired_position)
 /*
 Pings motor for its current position
  */
-void MaxonMotor::GetPosition(long& position)
+void MaxonMotor::GetPosition(double& position)
 {
 	// attempts to acquire current position of the motor
-	if (!VCS_GetPositionIs(key_handle_, node_id_, &position, &error_code_)) 
+	long actual_position;
+	if (!VCS_GetPositionIs(key_handle_, node_id_, &actual_position, &error_code_)) 
 	{
 		std::cout << " error while getting current position , error code = " << error_code_ << std::endl;
 	}
 
 	// convert from encoder counts to degrees
-	position = position / kDegreesToCount_;
+	position = actual_position / kDegreesToCount_;
 }
 
 /*
@@ -348,60 +342,54 @@ BOOL MaxonMotor::TargetReached()
 /***********************************************************
 **************** DATA RECORDER FUNCTIONS *******************
 ************************************************************/
-//
-///*
-//Tells the controller to begin recording data
-//*/
-//void MaxonMotor::startRecord()
-//{
-//	if (!VCS_StartRecorder(key_handle_, node_id_,  &error_code_))
-//	{
-//		std::cout << "Data recorder start failed!, error code = " << error_code_ << std::endl;
-//	}
-//}
-//
-///*
-//Tells the controller to stop recording data
-//*/
-//void MaxonMotor::stopRecord()
-//{
-//	if (!VCS_StopRecorder(key_handle_, node_id_, &error_code_))
-//	{
-//		std::cout << "Data recorder stop failed!, error code = " << error_code_ << std::endl;
-//	}
-//}
-//
-//void MaxonMotor::outputData()
-//{
-//	char* fileLocation = (char*)"test.csv";
-//	if (!VCS_ExportChannelDataToFile(key_handle_, node_id_, fileLocation, &error_code_))
-//	{
-//		std::cout << "Data output file record failed!, error code = " << error_code_ << std::endl;
-//	}
-//	
-//	
-//	DWORD* vectorSize = new DWORD;
-//	BYTE* dataVector = new BYTE;
-//	// read the size of the data vector in the channel
-//	if (!VCS_ReadChannelVectorSize(key_handle_, node_id_, vectorSize, &error_code_))
-//	{
-//		std::cout << "Read channel vector size failed!, error code = " << error_code_ << std::endl;
-//	}
-//
-//	// read data channel
-//	if (!VCS_ReadChannelDataVector(key_handle_, node_id_, channel, dataVector, *vectorSize, &error_code_))
-//	{
-//		std::cout << "Read channel data failed!, error code = " << error_code_ << std::endl;
-//	}
-//
-//	// convert BYTE array to int array
-//	for (int i = 0; i < *vectorSize; i += 4)
-//	{
-//		outputArray[i / 4] = (int)dataVector[i] << 24 | (int)dataVector[i + 1] << 16
-//			| (int)dataVector[i + 2] << 18 | dataVector[i + 3];
-//	}
-//
-//	// free memory up
-//	delete dataVector;
-//	delete vectorSize;
-//}
+/*
+Tells the controller to begin recording data
+*/
+// void MaxonMotor::StartRecord()
+// {
+// 	// turns on the recorder
+// 	if (!VCS_StartRecorder(key_handle_, node_id_,  &error_code_))
+// 	{
+// 		std::cout << "Data recorder start failed! Error code = " << error_code_ << std::endl;
+// 	}
+
+// 	// sets the trigger to any movement
+// 	if (!VCS_EnableTrigger(key_handle_, node_id_, DR_MOVEMENT_START_TRIGGER, &error_code_))
+// 	{
+// 		std::cout << "Data recorder trigger enable failed! Error code = " << error_code_ << std::endl;
+// 	}
+// }
+
+// /*
+// Tells the controller to stop recording data
+// */
+// void MaxonMotor::StopRecord()
+// {
+// 	if (!VCS_StopRecorder(key_handle_, node_id_, &error_code_))
+// 	{
+// 		std::cout << "Data recorder stop failed!, error code = " << error_code_ << std::endl;
+// 	}
+// }
+
+// void MaxonMotor::ReadData()
+// {	
+// 	DWORD* vector_size = new DWORD;
+// 	BYTE* data_vector = new BYTE;
+// 	// read the size of the data vector in the channel
+// 	if (!VCS_ReadChannelVectorSize(key_handle_, node_id_, vector_size, &error_code_))
+// 	{
+// 		std::cout << "Read channel vector size failed!, error code = " << error_code_ << std::endl;
+// 	}
+
+// 	std::cout <<  << std::endl;
+
+// 	// read data channel
+// 	// if (!VCS_ReadChannelDataVector(key_handle_, node_id_, 1, data_vector, *vector_size, &error_code_))
+// 	// {
+// 	// 	std::cout << "Read channel data failed!, error code = " << error_code_ << std::endl;
+// 	// }
+
+// 	// free memory up
+// 	delete data_vector;
+// 	delete vector_size;
+// }

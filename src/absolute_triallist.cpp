@@ -92,12 +92,18 @@ void TrialList::GetTestPositions(std::array<std::array<double,2>,2> &position_de
 
 	// generates test position std::array and test position std::array
 	double interference_angle = GetInterferenceAngle();
-	if(condition > 1)
+	if(condition == 0 || condition == 1)
+	{
 		// then the condition is manipulating stretch with squeeze interference
-		test_positions = { interference_angle, GetAngleNumber(condition, angle) };
+		test_positions = { GetAngleNumber(condition_iterator_, angle), interference_angle };
+		mel::print("Stretch");
+	}
 	else
+	{
 		// the condition is manipulating squeeze with stretch interference
-		test_positions = { GetAngleNumber(condition, angle), interference_angle };	
+		test_positions = { interference_angle, GetAngleNumber(condition_iterator_, angle) };	
+		mel::print("Squeeze");
+	}
 	
 	// attach zero position for motors to return to after cue
 	position_desired[0] = test_positions;
@@ -192,7 +198,7 @@ first and the squeeze band second
 */
 void TrialList::GetTestPositions(std::array<std::array<double,2>,2> &position_desired)
 {
-	GetTestPositions(position_desired, condition_iterator_, angle_iterator_);
+	GetTestPositions(position_desired, conditions_[condition_iterator_], angle_iterator_);
 }
 
 /*
@@ -328,12 +334,12 @@ bool TrialList::ImportList(std::string filepath)
 	// imports condition information from trialList file
 	if(!mel::csv_read_row(filepath,conditions_,1,0)) return false;
 
-	// prints condition labels for debug
+	// // prints condition labels for debug
 	// for (int j = 0; j < kNumberConditions_; j++)
 	// {
-	// 	print_string(to_string(conditions_[j]) + ",");
+	// 	mel::print_string(std::to_string(conditions_[j]) + ",");
 	// }
-	// print(" ");
+	// mel::print(" ");
 
 	// loads trialList file from import into class
 	std::array<std::array<double, kNumberConditions_>, kNumberAngles_ * kNumberTrials_> output;
