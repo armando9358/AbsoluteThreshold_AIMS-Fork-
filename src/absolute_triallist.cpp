@@ -96,13 +96,13 @@ void TrialList::GetTestPositions(std::array<std::array<double,2>,2> &position_de
 	{
 		// then the condition is manipulating stretch with squeeze interference
 		test_positions = { GetAngleNumber(condition_iterator_, angle), interference_angle };
-		mel::print("Stretch");
+		// mel::print("Stretch");
 	}
 	else
 	{
 		// the condition is manipulating squeeze with stretch interference
 		test_positions = { interference_angle, GetAngleNumber(condition_iterator_, angle) };	
-		mel::print("Squeeze");
+		// mel::print("Squeeze");
 	}
 	
 	// attach zero position for motors to return to after cue

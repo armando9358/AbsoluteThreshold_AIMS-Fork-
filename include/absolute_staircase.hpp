@@ -33,7 +33,7 @@ const int 	kInterference_(52);
 const int 	kZero_(0);
 const int   kRangeMin_(0);
 const std::array<double, kConditions_> kRangeMax_ = 
-	{2,60,2,90};
+	{2,60,5,90};
 const std::array<double, kConditions_> kInitialStepValues_ =
 	{0.05,2,0.05,4};
 

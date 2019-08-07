@@ -38,6 +38,7 @@ Force/Torque Sensors, and 1 NI DAQ for the force sensors.
 #include <MEL/Utility/Options.hpp>
 #include <MEL/Devices/AtiSensor.hpp>
 #include <MEL/Devices/Windows/Keyboard.hpp>
+#include <MEL/Daq/Quanser/QPid.hpp>
 
 // other misc standard libraries
 #include <queue>
@@ -126,8 +127,8 @@ void MotorPositionGet(std::array<std::array<double,2>,2> &position_desired, Maxo
 			motor_position[1] = position_b;
 		}
 		
-		// create 100Hz timer
-		Timer timer(hertz(100));
+		// create 1000Hz timer
+		Timer timer(hertz(1000));
 
 		// move motors to desired positions
 		motor_a.Move( motor_desired_position[0]);
@@ -147,22 +148,11 @@ void MotorPositionGet(std::array<std::array<double,2>,2> &position_desired, Maxo
 			timer.wait();
 		}
 
-		// gets final actual positions of the motors
-		motor_a.GetPosition(position_a);
-		motor_b.GetPosition(position_b);
-		{
-			Lock lock(mutex);
-			motor_position[0] = position_a;
-			motor_position[1] = position_b;
-		}
-		timer.wait();
-
 		//waits between cue 1 and cue 2
-		
-		if (i == 1)
-		{
-			sleep(milliseconds(kTimeBetweenCues));
-		}
+		// if (i == 1)
+		// {
+		// 	sleep(milliseconds(kTimeBetweenCues));
+		// }
 		
 	}
 	// tells the force sensor loop to exit once trial is complete
@@ -711,9 +701,11 @@ int main(int argc, char* argv[])
 	register_ctrl_handler(MyHandler);
 
 	// creates all neccesary objects for the program
-	DaqNI					daq_ni;					// creates a new analog input from the NI DAQ
-	AtiSensor				ati_a, ati_b;				// create the ATI FT Sensors
-	MaxonMotor				motor_a, motor_b;			// create new motors
+	DaqNI		daq_ni;						// creates a new analog input from the NI DAQ
+	QPid		qpid;						// create a new QPid device to read motor input
+	AtiSensor	ati_a, ati_b;				// create the ATI FT Sensors
+	MaxonMotor	motor_a(qpid.encoder[0]),	// create new motors
+				motor_b(qpid.encoder[1]);
 	std::vector<std::vector<double>>	threshold_output;		// creates pointer to the output data file for the experiment
 	
 	// Sensor Initialization

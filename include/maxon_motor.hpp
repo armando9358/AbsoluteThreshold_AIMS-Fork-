@@ -20,6 +20,9 @@ with other controllers
 // Maxon controller header file
 #include "Definitions.h" 
 
+// includes relevant MEL libraries
+#include <MEL/Daq/Quanser/QPid.hpp>
+
 
 /***********************************************************
 ******************* GLOBAL VARIABLES ***********************
@@ -41,30 +44,23 @@ private:
 	DWORD	error_code_;
 	byte	node_id_;
 	void*	key_handle_;
+	mel::QuanserEncoder::Channel	encoder_;
 
 	// control parameter variables
 	unsigned int desired_velocity_;
 	unsigned int desired_acceleration_;
 	unsigned int desired_deceleration_;
 
-	// data recorder variables
-	// WORD		 sample_period; 
-	// WORD		 samples;
-
 	// device connection functions
 	void		 EnableControl();
 	void		 DisableControl();
-
-	// device parameter functions
-	// void		 SetControlParam();
-	// void 	 SetRecorderParam();
 
 	// movement functions
 	void		 Halt();
 
 public:
 	// constructor
-	MaxonMotor();
+	MaxonMotor(mel::QuanserEncoder::Channel encoder);
 	~MaxonMotor();
 
 	// device connection functions
@@ -76,17 +72,10 @@ public:
 	void	SetControlParam(unsigned int desired_velocity, 
 							unsigned int desired_acceleration, 
 							unsigned int desired_deceleration);
-	// void 	SetRecorderParam(unsigned int desired_sample_frequency,
-	// 						unsigned int desired_samples);
 
 	// movement functions
 	void	Move(double desired_position);
 	void	GetPosition(double& position);
 	BOOL	TargetReached();
-
-	// data recorder functions
-	// void StartRecord();
-	// void StopRecord();
-	// void ReadData();
 };
 #endif MAXONMOTOR
