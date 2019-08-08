@@ -26,7 +26,8 @@ other controllers
 /*
 Constructor for the maxonMotor class
  */
-MaxonMotor::MaxonMotor(mel::QuanserEncoder::Channel encoder)
+MaxonMotor::MaxonMotor(mel::QuanserEncoder::Channel encoder) :
+	encoder_(encoder)
 {
 	// initializing controller information
 	port_name_ = (char*)"USB0";
@@ -35,7 +36,6 @@ MaxonMotor::MaxonMotor(mel::QuanserEncoder::Channel encoder)
 	key_handle_ = 0;
 
 	// sets encoder to be used to read position values
-	encoder_ = encoder;
 	encoder_.zero(); // zeroes the encoder at the beginning of the experiment
 
 	// initializing motor control parameters
@@ -149,7 +149,7 @@ controller being referenced through USB comms.
 void MaxonMotor::Start()
 {
 	// Configuring EPOS4 for motor control
-	char device_name[] =		"EPOS4";
+	char device_name[] =	"EPOS4";
 	char protocol_name[] =	"MAXON SERIAL V2";
 	char interface_name[] =	"USB";
 
@@ -231,10 +231,10 @@ void MaxonMotor::Move(double desired_position)
 	BOOL immediate_flag =	TRUE;
 
 	// convert from degrees to encoder counts
-	desired_position = desired_position * kDegreesToCount_;
+	desired_position_ = desired_position * kDegreesToCount_;
 
 	// sends signal to move Maxon motor to specified position
-	if (!VCS_MoveToPosition(key_handle_, node_id_, (long)desired_position, absolute_flag, immediate_flag, &error_code_)) 
+	if (!VCS_MoveToPosition(key_handle_, node_id_, (long)desired_position_, absolute_flag, immediate_flag, &error_code_)) 
 	{
 		std::cout << "Move to position failed!, error code = " << error_code_ << std::endl;
 		Halt();
@@ -247,10 +247,10 @@ Pings motor for its current position
 void MaxonMotor::GetPosition(double& position)
 {
 	// attempts to acquire current position of the motor
-	long actual_position = encoder_.get_value();
+	actual_position_ = encoder_.get_value();
 
 	// convert from encoder counts to degrees
-	position = actual_position / kDegreesToCount_;
+	position = actual_position_ / kDegreesToCount_;
 }
 
 /*
@@ -273,9 +273,18 @@ BOOL MaxonMotor::TargetReached()
 {
 	BOOL target_reached = FALSE;
 
-	if (!VCS_GetMovementState(key_handle_, node_id_, &target_reached, &error_code_)) 
+	actual_position_ = encoder_.get_value();
+
+	if(abs(actual_position_ - desired_position_) <= 3)
 	{
-		std::cout << "Motion check failed!, error code = " << error_code_ << std::endl;
+		target_reached = TRUE;
+		// if (!VCS_GetMovementState(key_handle_, node_id_, &target_reached, &error_code_)) 
+		// {
+		// 	std::cout << "Motion check failed!, error code = " << error_code_ << std::endl;
+		// }
 	}
+	
+
+
 	return target_reached;
 }

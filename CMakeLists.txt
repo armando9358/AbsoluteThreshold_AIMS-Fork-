@@ -42,6 +42,7 @@ add_executable(threshold_tests
 # link MEL
 target_link_libraries(threshold_tests
     MEL::MEL
+    MEL::quanser
     NIDAQmx.lib
     EposCmd64.lib
 )

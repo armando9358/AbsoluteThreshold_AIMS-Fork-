@@ -51,6 +51,10 @@ private:
 	unsigned int desired_acceleration_;
 	unsigned int desired_deceleration_;
 
+	// position variables
+	double desired_position_;
+	double actual_position_;
+
 	// device connection functions
 	void		 EnableControl();
 	void		 DisableControl();

@@ -56,7 +56,7 @@ using namespace mel;
 const int	 		kTimeBetweenCues(10);// sets the number of milliseconds to wait in between cues
 const int	 		kConfirmValue(123);
 const bool	 		kTimestamp(false);
-const std::string	kDataPath("C:/Users/aa107/Desktop/Absolute_Threshold"); //file path to Main project files
+const std::string	kDataPath("C:/Users/zaz2/Desktop/Absolute_Threshold"); //file path to Main project files
 
 // variable to track protocol being run						
 bool		 staircase_flag(false);
@@ -106,19 +106,22 @@ Function to move the motor and measure its position. Position
 measurement occurs at 100Hz in a separate thread to the 
 1000Hz force sensor recorder
 */
-void MotorPositionGet(std::array<std::array<double,2>,2> &position_desired, MaxonMotor &motor_a, MaxonMotor &motor_b) 
-{
+void MotorPositionGet(
+	std::array<std::array<double,2>,2> &position_desired, 	QPid &qpid,
+	MaxonMotor &motor_a, 									MaxonMotor &motor_b) 
+{		
+	// defines the actual positions of the motors
+	double position_a, position_b;
+	
 	// loops through each of the positions in the std::array for the trial
 	for (int i = 0; i < position_desired.size(); i++)
 	{			
-		// defines the actual positions of the motors
-		double position_a, position_b;
-
 		// gets the initial actual positions of the motors
+		qpid.update_input();
 		motor_a.GetPosition(position_a);
 		motor_b.GetPosition(position_b);
 
-		// update positions
+		// update desired positions
 		{
 			Lock lock(mutex);
 			motor_desired_position[0] = position_desired[i][0];
@@ -126,30 +129,35 @@ void MotorPositionGet(std::array<std::array<double,2>,2> &position_desired, Maxo
 			motor_position[0] = position_a;
 			motor_position[1] = position_b;
 		}
-		
-		// create 1000Hz timer
-		Timer timer(hertz(1000));
 
 		// move motors to desired positions
 		motor_a.Move( motor_desired_position[0]);
 		motor_b.Move( motor_desired_position[1]);
 
+		// create 1000Hz timer
+		Timer timer2(hertz(1000));
+
 		// measures the motor positions during any motor movement
 		while (!motor_a.TargetReached() || !motor_b.TargetReached()) {
 
 			// gets the actual positions of the motors
+			qpid.update_input();
 			motor_a.GetPosition(position_a);
 			motor_b.GetPosition(position_b);
+
+			print(position_a);
 			{
 				Lock lock(mutex);
+				motor_desired_position[0] = position_desired[i][0];
+				motor_desired_position[1] = position_desired[i][1];
 				motor_position[0] = position_a;
 				motor_position[1] = position_b;
 			}
-			timer.wait();
+			timer2.wait();
 		}
 
-		//waits between cue 1 and cue 2
-		// if (i == 1)
+		// //waits between cue 1 and cue 2
+		// if (i == 0)
 		// {
 		// 	sleep(milliseconds(kTimeBetweenCues));
 		// }
@@ -163,64 +171,90 @@ void MotorPositionGet(std::array<std::array<double,2>,2> &position_desired, Maxo
 Measures force/torque data, motor position data and time information
 during the motor movement
 */
-void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired, 	DaqNI &daq_ni,
-						 AtiSensor &ati_a,					AtiSensor &ati_b,
-						 MaxonMotor &motor_a,				MaxonMotor &motor_b,
-						 std::vector<std::vector<double>>* output_)
-{
+void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired, 
+						DaqNI &daq_ni,				QPid &qpid,
+						AtiSensor &ati_a,			AtiSensor &ati_b,
+						MaxonMotor &motor_a,		MaxonMotor &motor_b,
+						std::vector<std::vector<double>>* output_)
+{	
 	// initial sample
 	int sample = 0;
 
 	// starts motor position read thread
-	std::thread motor_position_thread(MotorPositionGet, std::ref(position_desired), std::ref(motor_a), std::ref(motor_b));
+	// std::thread motor_position_thread(MotorPositionGet, 
+	// 		std::ref(position_desired), std::ref(qpid),
+	// 		std::ref(motor_a), std::ref(motor_b));
 
-	// create 1000Hz timer
-	Timer timer(hertz(1000)); 
+	// loops through each of the positions in the std::array for the trial
+	for (int i = 0; i < position_desired.size(); i++)
+	{			
 
-	// final loop flag
-	bool last_flag = true;
+		motor_desired_position[0] = position_desired[i][0];
+		motor_desired_position[1] = position_desired[i][1];
 
-	// movement data record loop
-	while (!motor_flag || last_flag)
-	{
-		// DAQmx Read Code
-		daq_ni.update();
+		// gets the actual positions of the motors
+		qpid.update_input();
+		motor_a.GetPosition(motor_position[0]);
+		motor_b.GetPosition(motor_position[1]);
 
-		// measuring force/torque sensors
-		std::vector<double> forceA =	ati_a.get_forces();
-		std::vector<double> forceB =  	ati_b.get_forces();
-		std::vector<double> torqueA = 	ati_a.get_torques();
-		std::vector<double> torqueB = 	ati_b.get_torques();
-		std::vector<double> output_row;	
+		// move motors to desired positions
+		motor_a.Move( motor_desired_position[0] );
+		motor_b.Move( motor_desired_position[1] );
 
-		// locks pulls data into the output_row format and unlocks
+		// create 1000Hz timer
+		Timer timer(hertz(1000)); 
+
+		// final loop flag
+		bool last_flag = true;
+
+		// movement data record loop
+		while (!motor_a.TargetReached() || !motor_b.TargetReached())
+			// !motor_flag || last_flag)
 		{
-			Lock lock(mutex);
+			// gets the actual positions of the motors
+			qpid.update_input();
+			motor_a.GetPosition(motor_position[0]);
+			motor_b.GetPosition(motor_position[1]);
 
-			output_row = { (double)sample,
-				// Motor/Sensor A
-				motor_desired_position[0],	motor_position[0], 
-				forceA[0],			forceA[1],			forceA[2], 
-				torqueA[0],			torqueA[1],			torqueA[2],
+			// DAQmx Read Code
+			daq_ni.update();
+			// measuring force/torque sensors
+			std::vector<double> forceA =	ati_a.get_forces();
+			std::vector<double> forceB =  	ati_b.get_forces();
+			std::vector<double> torqueA = 	ati_a.get_torques();
+			std::vector<double> torqueB = 	ati_b.get_torques();
+			std::vector<double> output_row;	
+			
+			// locks pulls data into the output_row format and unlocks
+			{
+				Lock lock(mutex);
 
-				// Motor/Sensor B
-				motor_desired_position[1],	motor_position[1],
-				forceB[0],			forceB[1],			forceB[2],
-				torqueB[0],			torqueB[1],			torqueB[2]
-			};
+				output_row = { (double)sample,
+					// Motor/Sensor A
+					motor_desired_position[0],	motor_position[0], 
+					forceA[0],			forceA[1],			forceA[2], 
+					torqueA[0],			torqueA[1],			torqueA[2],
+
+					// Motor/Sensor B
+					motor_desired_position[1],	motor_position[1],
+					forceB[0],			forceB[1],			forceB[2],
+					torqueB[0],			torqueB[1],			torqueB[2]
+				};
+			}
+			// input the the sampled data into output buffer
+			output_->push_back(output_row);
+
+			// increment sample number
+			sample++;
+			timer.wait();
+
+			if(motor_flag) last_flag = false;
 		}
-		// input the the sampled data into output buffer
-		output_->push_back(output_row);
 
-		// increment sample number
-		sample++;
-		timer.wait();
+		// joins threads together and resets flag before continuing
+		// motor_position_thread.join();
 
-		if(motor_flag) last_flag = false;
 	}
-
-	// joins threads together and resets flag before continuing
-	motor_position_thread.join();
 	motor_flag = false;
 }
 
@@ -228,9 +262,10 @@ void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired, 	
 Runs a single test trial on motor_a to ensure data logging
 is working.
 */
-void RunMovementTrial(std::array<std::array<double,2>,2> &position_desired,	DaqNI &daq_ni, 
-					  AtiSensor &ati_a,					AtiSensor &ati_b,
-					  MaxonMotor &motor_a,				MaxonMotor &motor_b)
+void RunMovementTrial(std::array<std::array<double,2>,2> &position_desired,
+					DaqNI &daq_ni, 			QPid &qpid,
+					AtiSensor &ati_a,		AtiSensor &ati_b,
+					MaxonMotor &motor_a,	MaxonMotor &motor_b)
 {
 	// create new output buffer
 	std::vector<std::vector<double>> movementOutput;
@@ -241,7 +276,7 @@ void RunMovementTrial(std::array<std::array<double,2>,2> &position_desired,	DaqN
 	filepath = kDataPath + "/FT/subject" + std::to_string(subject) + filename;
 
 	// starting haptic trial
-	RecordMovementTrial(position_desired, daq_ni, ati_a, ati_b, motor_a, motor_b, &movementOutput);
+	RecordMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b, &movementOutput);
 
 	// Defines header names of the csv
 	const std::vector<std::string> header_names = 
@@ -516,9 +551,9 @@ void RunImportUI(std::vector<std::vector<double>>* threshold_output)
 Run a single condition on a user automatically. If
 experimenter enters the exit value, exits the program.
 */
-void RunExperimentUI(DaqNI &daq_ni,
-					 AtiSensor &ati_a,	 AtiSensor &ati_b,
-					 MaxonMotor &motor_a, MaxonMotor &motor_b,
+void RunExperimentUI(DaqNI &daq_ni, 		QPid &qpid,
+					 AtiSensor &ati_a,	 	AtiSensor &ati_b,
+					 MaxonMotor &motor_a, 	MaxonMotor &motor_b,
 					 std::vector<std::vector<double>>* threshold_output)
 {
 	// defines positions of the currrent test cue
@@ -549,7 +584,7 @@ void RunExperimentUI(DaqNI &daq_ni,
 		//print(position_desired[0]);
 		
 		// provides cue to user
-		RunMovementTrial(position_desired, daq_ni, ati_a, ati_b, motor_a, motor_b);
+		RunMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
 
 		// record ABS trial response
 		RecordExperimentABS(threshold_output);
@@ -565,7 +600,7 @@ void RunExperimentUI(DaqNI &daq_ni,
 	trial_list.GetTestPositions(position_desired);
 
 	// provides final cue of condition to user
-	RunMovementTrial(position_desired, daq_ni, ati_a, ati_b, motor_a, motor_b);
+	RunMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
 
 	// record final ABS trial response
 	RecordExperimentABS(threshold_output);
@@ -612,9 +647,9 @@ void RunExportUI(std::vector<std::vector<double>>* threshold_output)
 /***********************************************************
 ****************** STAIRCASE FUNCTIONS *********************
 ************************************************************/
-void RunStaircaseUI(DaqNI &daq_ni,
-					AtiSensor &ati_a,	 AtiSensor &ati_b,
-					MaxonMotor &motor_a, MaxonMotor &motor_b)
+void RunStaircaseUI(DaqNI &daq_ni,			QPid &qpid,
+					AtiSensor &ati_a,	 	AtiSensor &ati_b,
+					MaxonMotor &motor_a, 	MaxonMotor &motor_b)
 {
 	// define relevant variable containers for desire position
 	std::array<std::array<double, 2>, 2> position_desired;
@@ -640,7 +675,7 @@ void RunStaircaseUI(DaqNI &daq_ni,
 		while(!staircase.HasSettled())
 		{
 			staircase.GetTestPositions(position_desired);
-			RunMovementTrial(position_desired, daq_ni, ati_a, ati_b, motor_a, motor_b);
+			RunMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
 			staircase.ReadInput();
 		}
 		print("Trial Completed");
@@ -655,7 +690,7 @@ void RunStaircaseUI(DaqNI &daq_ni,
 			while(!staircase.HasSettled())
 			{
 				staircase.GetTestPositions(position_desired);
-				RunMovementTrial(position_desired, daq_ni, ati_a, ati_b, motor_a, motor_b);
+				RunMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
 				staircase.ReadInput();
 			}
 			print("Trial Completed");
@@ -700,9 +735,15 @@ int main(int argc, char* argv[])
 	// registers the mel handler to exit the program using Ctrl-c
 	register_ctrl_handler(MyHandler);
 
-	// creates all neccesary objects for the program
+	// creates all neccesary DAQ objects for the program
 	DaqNI		daq_ni;						// creates a new analog input from the NI DAQ
 	QPid		qpid;						// create a new QPid device to read motor input
+	
+	// Open & Enable QPide
+	if (!qpid.open()) return 1;
+    if (!qpid.enable()) return 1;
+
+	// creates all neccesary sensor and motor objects for the program
 	AtiSensor	ati_a, ati_b;				// create the ATI FT Sensors
 	MaxonMotor	motor_a(qpid.encoder[0]),	// create new motors
 				motor_b(qpid.encoder[1]);
@@ -751,7 +792,7 @@ int main(int argc, char* argv[])
 		// runs staircase method until directed to exit
 		while(!stop)
 		{
-			RunStaircaseUI(daq_ni, ati_a, ati_b, motor_a, motor_b);
+			RunStaircaseUI(daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
 		}
 
 		// exports staircase method output
@@ -771,7 +812,7 @@ int main(int argc, char* argv[])
 		while (!stop)
 		{
 			// runs a full condition unless interupted
-			RunExperimentUI(daq_ni, ati_a, ati_b, motor_a, motor_b, &threshold_output);
+			RunExperimentUI(daq_ni, qpid, ati_a, ati_b, motor_a, motor_b, &threshold_output);
 
 			// advance to the next condition if another condition exists
 			AdvanceExperimentCondition();		
@@ -781,8 +822,13 @@ int main(int argc, char* argv[])
 		RunExportUI(&threshold_output);
 	}
 
+    // disable qpid USB
+    qpid.disable();
+    // close qpid USB
+    qpid.close();
+
 	// informs user that the application is over
 	print("Exiting application...");
-	
+
 	return EXIT_SUCCESS;
 }
