@@ -278,13 +278,7 @@ BOOL MaxonMotor::TargetReached()
 	if(abs(actual_position_ - desired_position_) <= 3)
 	{
 		target_reached = TRUE;
-		// if (!VCS_GetMovementState(key_handle_, node_id_, &target_reached, &error_code_)) 
-		// {
-		// 	std::cout << "Motion check failed!, error code = " << error_code_ << std::endl;
-		// }
 	}
 	
-
-
 	return target_reached;
 }

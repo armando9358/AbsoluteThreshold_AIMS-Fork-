@@ -69,9 +69,7 @@ int			 subject = 0;
 // actual motor positions variable
 double		 motor_position[2];
 double		 motor_desired_position[2];
-bool	     motor_flag(false);
 ctrl_bool	 stop(false);
-Mutex		 mutex; // mutex for the separate motor position reading thread
 
 
 /***********************************************************
@@ -102,72 +100,6 @@ void MotorInitialize(MaxonMotor &motor, char* port_name)
 ****************** MOVEMENT FUNCTIONS **********************
 ************************************************************/
 /*
-Function to move the motor and measure its position. Position
-measurement occurs at 100Hz in a separate thread to the 
-1000Hz force sensor recorder
-*/
-void MotorPositionGet(
-	std::array<std::array<double,2>,2> &position_desired, 	QPid &qpid,
-	MaxonMotor &motor_a, 									MaxonMotor &motor_b) 
-{		
-	// defines the actual positions of the motors
-	double position_a, position_b;
-	
-	// loops through each of the positions in the std::array for the trial
-	for (int i = 0; i < position_desired.size(); i++)
-	{			
-		// gets the initial actual positions of the motors
-		qpid.update_input();
-		motor_a.GetPosition(position_a);
-		motor_b.GetPosition(position_b);
-
-		// update desired positions
-		{
-			Lock lock(mutex);
-			motor_desired_position[0] = position_desired[i][0];
-			motor_desired_position[1] = position_desired[i][1];
-			motor_position[0] = position_a;
-			motor_position[1] = position_b;
-		}
-
-		// move motors to desired positions
-		motor_a.Move( motor_desired_position[0]);
-		motor_b.Move( motor_desired_position[1]);
-
-		// create 1000Hz timer
-		Timer timer2(hertz(1000));
-
-		// measures the motor positions during any motor movement
-		while (!motor_a.TargetReached() || !motor_b.TargetReached()) {
-
-			// gets the actual positions of the motors
-			qpid.update_input();
-			motor_a.GetPosition(position_a);
-			motor_b.GetPosition(position_b);
-
-			print(position_a);
-			{
-				Lock lock(mutex);
-				motor_desired_position[0] = position_desired[i][0];
-				motor_desired_position[1] = position_desired[i][1];
-				motor_position[0] = position_a;
-				motor_position[1] = position_b;
-			}
-			timer2.wait();
-		}
-
-		// //waits between cue 1 and cue 2
-		// if (i == 0)
-		// {
-		// 	sleep(milliseconds(kTimeBetweenCues));
-		// }
-		
-	}
-	// tells the force sensor loop to exit once trial is complete
-	motor_flag = true;
-}
-
-/*
 Measures force/torque data, motor position data and time information
 during the motor movement
 */
@@ -180,15 +112,10 @@ void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired,
 	// initial sample
 	int sample = 0;
 
-	// starts motor position read thread
-	// std::thread motor_position_thread(MotorPositionGet, 
-	// 		std::ref(position_desired), std::ref(qpid),
-	// 		std::ref(motor_a), std::ref(motor_b));
-
 	// loops through each of the positions in the std::array for the trial
 	for (int i = 0; i < position_desired.size(); i++)
 	{			
-
+		// gets next desired position
 		motor_desired_position[0] = position_desired[i][0];
 		motor_desired_position[1] = position_desired[i][1];
 
@@ -204,12 +131,8 @@ void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired,
 		// create 1000Hz timer
 		Timer timer(hertz(1000)); 
 
-		// final loop flag
-		bool last_flag = true;
-
 		// movement data record loop
 		while (!motor_a.TargetReached() || !motor_b.TargetReached())
-			// !motor_flag || last_flag)
 		{
 			// gets the actual positions of the motors
 			qpid.update_input();
@@ -225,37 +148,30 @@ void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired,
 			std::vector<double> torqueB = 	ati_b.get_torques();
 			std::vector<double> output_row;	
 			
-			// locks pulls data into the output_row format and unlocks
-			{
-				Lock lock(mutex);
-
-				output_row = { (double)sample,
-					// Motor/Sensor A
-					motor_desired_position[0],	motor_position[0], 
-					forceA[0],			forceA[1],			forceA[2], 
-					torqueA[0],			torqueA[1],			torqueA[2],
-
-					// Motor/Sensor B
-					motor_desired_position[1],	motor_position[1],
-					forceB[0],			forceB[1],			forceB[2],
-					torqueB[0],			torqueB[1],			torqueB[2]
-				};
-			}
+			// creates the output row for the motor position data file
+			output_row = { (double)sample,
+				// Motor/Sensor A
+				motor_desired_position[0],	motor_position[0], 
+				forceA[0],			forceA[1],			forceA[2], 
+				torqueA[0],			torqueA[1],			torqueA[2],
+				
+				// Motor/Sensor B
+				motor_desired_position[1],	motor_position[1],
+				forceB[0],			forceB[1],			forceB[2],
+				torqueB[0],			torqueB[1],			torqueB[2]
+			};
 			// input the the sampled data into output buffer
 			output_->push_back(output_row);
+
+			// debugging motor output
+			// print(	motor_desired_position[0],		motor_position[0],
+			//  		motor_desired_position[1],		motor_position[1]);
 
 			// increment sample number
 			sample++;
 			timer.wait();
-
-			if(motor_flag) last_flag = false;
 		}
-
-		// joins threads together and resets flag before continuing
-		// motor_position_thread.join();
-
 	}
-	motor_flag = false;
 }
 
 /*
