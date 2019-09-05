@@ -191,8 +191,12 @@ void RunMovementTrial(std::array<std::array<double,2>,2> &position_desired,
 	filename = "/sub" + std::to_string(subject) + "_" + std::to_string(trial_list.GetIterationNumber()) + "_" + trial_list.GetTrialName() + "_data.csv";
 	filepath = kDataPath + "/FT/subject" + std::to_string(subject) + filename;
 
+	// create 500 ms timer
+	Timer timer(milliseconds(500));
 	// starting haptic trial
 	RecordMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b, &movementOutput);
+	// ensures the entire trial takes a total of 500 ms
+	timer.wait();
 
 	// Defines header names of the csv
 	const std::vector<std::string> header_names = 
