@@ -275,9 +275,20 @@ BOOL MaxonMotor::TargetReached()
 
 	actual_position_ = encoder_.get_value();
 
-	if(abs(actual_position_ - desired_position_) <= 3)
-	{
-		target_reached = TRUE;
+	// set limits for the motor reaching its desired target
+	int small_limit = 5;
+	int large_limit = 500;
+
+	// if within 5 encoder clicks of the desired position end data logging
+	// switches the fidelity of the switch based on if it is large or small
+	// or if it is heading to zero
+	if(desired_position_ < 1000) {
+		if(abs(actual_position_ - desired_position_) <= small_limit)
+			target_reached = TRUE;
+	}
+	else if(desired_position_ >= 1000) {
+		if(abs(actual_position_ - desired_position_) <= large_limit)
+			target_reached = TRUE;
 	}
 	
 	return target_reached;
