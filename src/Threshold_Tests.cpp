@@ -38,7 +38,7 @@ Force/Torque Sensors, and 1 NI DAQ for the force sensors.
 #include <MEL/Utility/Options.hpp>
 #include <MEL/Devices/AtiSensor.hpp>
 #include <MEL/Devices/Windows/Keyboard.hpp>
-#include <MEL/Daq/Quanser/QPid.hpp>
+#include <MEL/Daq/Quanser/Q8Usb.hpp>
 
 // other misc standard libraries
 #include <queue>
@@ -104,7 +104,7 @@ Measures force/torque data, motor position data and time information
 during the motor movement
 */
 void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired, 
-						DaqNI &daq_ni,				QPid &qpid,
+						DaqNI &daq_ni,				Q8Usb &q8,
 						AtiSensor &ati_a,			AtiSensor &ati_b,
 						MaxonMotor &motor_a,		MaxonMotor &motor_b,
 						std::vector<std::vector<double>>* output_)
@@ -120,7 +120,7 @@ void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired,
 		motor_desired_position[1] = position_desired[i][1];
 
 		// gets the actual positions of the motors
-		qpid.update_input();
+		q8.update_input();
 		motor_a.GetPosition(motor_position[0]);
 		motor_b.GetPosition(motor_position[1]);
 
@@ -135,7 +135,7 @@ void RecordMovementTrial(std::array<std::array<double,2>,2> &position_desired,
 		while (!motor_a.TargetReached() || !motor_b.TargetReached())
 		{
 			// gets the actual positions of the motors
-			qpid.update_input();
+			q8.update_input();
 			motor_a.GetPosition(motor_position[0]);
 			motor_b.GetPosition(motor_position[1]);
 
@@ -179,7 +179,7 @@ Runs a single test trial on motor_a to ensure data logging
 is working.
 */
 void RunMovementTrial(std::array<std::array<double,2>,2> &position_desired,
-					DaqNI &daq_ni, 			QPid &qpid,
+					DaqNI &daq_ni, 			Q8Usb &q8,
 					AtiSensor &ati_a,		AtiSensor &ati_b,
 					MaxonMotor &motor_a,	MaxonMotor &motor_b)
 {
@@ -194,7 +194,7 @@ void RunMovementTrial(std::array<std::array<double,2>,2> &position_desired,
 	// create 500 ms timer
 	Timer timer(milliseconds(500));
 	// starting haptic trial
-	RecordMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b, &movementOutput);
+	RecordMovementTrial(position_desired, daq_ni, q8, ati_a, ati_b, motor_a, motor_b, &movementOutput);
 	// ensures the entire trial takes a total of 500 ms
 	timer.wait();
 
@@ -471,7 +471,7 @@ void RunImportUI(std::vector<std::vector<double>>* threshold_output)
 Run a single condition on a user automatically. If
 experimenter enters the exit value, exits the program.
 */
-void RunExperimentUI(DaqNI &daq_ni, 		QPid &qpid,
+void RunExperimentUI(DaqNI &daq_ni, 		Q8Usb &q8,
 					 AtiSensor &ati_a,	 	AtiSensor &ati_b,
 					 MaxonMotor &motor_a, 	MaxonMotor &motor_b,
 					 std::vector<std::vector<double>>* threshold_output)
@@ -504,7 +504,7 @@ void RunExperimentUI(DaqNI &daq_ni, 		QPid &qpid,
 		//print(position_desired[0]);
 		
 		// provides cue to user
-		RunMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
+		RunMovementTrial(position_desired, daq_ni, q8, ati_a, ati_b, motor_a, motor_b);
 
 		// record ABS trial response
 		RecordExperimentABS(threshold_output);
@@ -520,7 +520,7 @@ void RunExperimentUI(DaqNI &daq_ni, 		QPid &qpid,
 	trial_list.GetTestPositions(position_desired);
 
 	// provides final cue of condition to user
-	RunMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
+	RunMovementTrial(position_desired, daq_ni, q8, ati_a, ati_b, motor_a, motor_b);
 
 	// record final ABS trial response
 	RecordExperimentABS(threshold_output);
@@ -567,7 +567,7 @@ void RunExportUI(std::vector<std::vector<double>>* threshold_output)
 /***********************************************************
 ****************** STAIRCASE FUNCTIONS *********************
 ************************************************************/
-void RunStaircaseUI(DaqNI &daq_ni,			QPid &qpid,
+void RunStaircaseUI(DaqNI &daq_ni,			Q8Usb &q8,
 					AtiSensor &ati_a,	 	AtiSensor &ati_b,
 					MaxonMotor &motor_a, 	MaxonMotor &motor_b)
 {
@@ -595,7 +595,7 @@ void RunStaircaseUI(DaqNI &daq_ni,			QPid &qpid,
 		while(!staircase.HasSettled())
 		{
 			staircase.GetTestPositions(position_desired);
-			RunMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
+			RunMovementTrial(position_desired, daq_ni, q8, ati_a, ati_b, motor_a, motor_b);
 			staircase.ReadInput();
 		}
 		print("Trial Completed");
@@ -610,7 +610,7 @@ void RunStaircaseUI(DaqNI &daq_ni,			QPid &qpid,
 			while(!staircase.HasSettled())
 			{
 				staircase.GetTestPositions(position_desired);
-				RunMovementTrial(position_desired, daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
+				RunMovementTrial(position_desired, daq_ni, q8, ati_a, ati_b, motor_a, motor_b);
 				staircase.ReadInput();
 			}
 			print("Trial Completed");
@@ -656,18 +656,18 @@ int main(int argc, char* argv[])
 	register_ctrl_handler(MyHandler);
 
 	// creates all neccesary DAQ objects for the program
-	DaqNI		daq_ni;						// creates a new analog input from the NI DAQ
-	QPid		qpid;						// create a new QPid device to read motor input
+	DaqNI		daq_ni;		// creates a new analog input from the NI DAQ
+	Q8Usb		q8;			// create a new Q8Usb device to read motor input
 	
-	// Open & Enable QPide
-	if (!qpid.open()) return 1;
-    if (!qpid.enable()) return 1;
+	// Open & Enable Q8Usb
+	if (!q8.open()) return 1;
+    if (!q8.enable()) return 1;
 
 	// creates all neccesary sensor and motor objects for the program
 	AtiSensor	ati_a, ati_b;				// create the ATI FT Sensors
-	MaxonMotor	motor_a(qpid.encoder[0]),	// create new motors
-				motor_b(qpid.encoder[1]);
-	std::vector<std::vector<double>>	threshold_output;		// creates pointer to the output data file for the experiment
+	MaxonMotor	motor_a(q8.encoder[0]),	// create new motors
+				motor_b(q8.encoder[1]);
+	std::vector<std::vector<double>>	threshold_output;	// creates pointer to the output data file for the experiment
 	
 	// Sensor Initialization
 	// calibrate the FT sensors 
@@ -712,7 +712,7 @@ int main(int argc, char* argv[])
 		// runs staircase method until directed to exit
 		while(!stop)
 		{
-			RunStaircaseUI(daq_ni, qpid, ati_a, ati_b, motor_a, motor_b);
+			RunStaircaseUI(daq_ni, q8, ati_a, ati_b, motor_a, motor_b);
 		}
 
 		// exports staircase method output
@@ -732,7 +732,7 @@ int main(int argc, char* argv[])
 		while (!stop)
 		{
 			// runs a full condition unless interupted
-			RunExperimentUI(daq_ni, qpid, ati_a, ati_b, motor_a, motor_b, &threshold_output);
+			RunExperimentUI(daq_ni, q8, ati_a, ati_b, motor_a, motor_b, &threshold_output);
 
 			// exports relevant ABS data
 			RunExportUI(&threshold_output);
@@ -745,10 +745,10 @@ int main(int argc, char* argv[])
 		RunExportUI(&threshold_output);
 	}
 
-    // disable qpid USB
-    qpid.disable();
-    // close qpid USB
-    qpid.close();
+    // disable q8 USB
+    q8.disable();
+    // close q8 USB
+    q8.close();
 
 	// informs user that the application is over
 	print("Exiting application...");
