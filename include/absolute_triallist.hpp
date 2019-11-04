@@ -31,7 +31,7 @@ const int	kNumberTrials_(50);
 const int 	kInterferenceAngle_(52);
 const int 	kZeroAngle_(0);
 const std::array<double, kNumberAngles_> kStretchAngles_ = 
-	{0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3};
+	{0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6};
 const std::array<double, kNumberAngles_> kStretchAnglesInterference_ = 
 	{0, 7, 14, 21, 28, 35, 42};	
 const std::array<double, kNumberAngles_> kSqueezeAngles_ = 
