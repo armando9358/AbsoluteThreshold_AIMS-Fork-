@@ -67,7 +67,7 @@ Outputs current condition and angle name
 */
 std::string TrialList::GetTrialName(int condition, int angle)
 {
-	return GetConditionName(condition) + "_" + std::to_string(GetAngleNumber(condition, angle));
+	return GetConditionName() + "_" + std::to_string(GetAngleNumber(condition, angle));
 }
 
 /*
